@@ -64,7 +64,7 @@ class Biome:
             else:
                 animalMax = 5
             
-            animalNum = random.randint(2, animalMax)
+            animalNum = random.randint(1, animalMax)
             print('animals #:', animalNum)
             animalChoices = random.sample(animalSet, animalNum)
             animalDistribution = splitNum(animalNum, numCordsToFill)
@@ -114,7 +114,7 @@ class Biome:
             else:
                 plantMax = 5
             
-            plantNum = random.randint(2, plantMax)
+            plantNum = random.randint(1, plantMax)
             print('plants #:', plantNum)
             plantChoices = random.sample(plantSet, plantNum)
             plantDistribution = splitNum(plantNum, numCordsToFill)
@@ -159,7 +159,7 @@ class Biome:
             else:
                 pawnMax = 5
             
-            pawnNum = random.randint(2, pawnMax)
+            pawnNum = random.randint(1, pawnMax)
             print('pawns #:', pawnNum)
             pawnChoices = random.sample(pawnSet, pawnNum)
             pawnDistribution = splitNum(pawnNum, numCordsToFill)
@@ -197,10 +197,12 @@ class Biome:
 
         print('\nsection number:', str(self.sectNum))
 
-        self.available_biome_types = {0 : self.crops,
-                                1 : self.animals,
-                                2 : self.field,
-                                3 : self.pond}
+        self.available_biome_types = {
+            0: self.crops,
+            1: self.animals,
+            2: self.field,
+            3: self.pond
+        }
 
         if int(self.sectNum) % 2 == 0:
             #print('biome type: BARRIER\n')
