@@ -3,7 +3,7 @@
 # MIT License
 
 # Copyright (c) 2017 Clayton Dorsey
-# https://cydy.io @claytondorsey 
+# https://cydy.io @claytondorsey
 
 ANIMALS_FARM = [
     ':cow:',
@@ -12,15 +12,22 @@ ANIMALS_FARM = [
     ':horse:',
     ':pig:',
     ':goat:',
-    ':sheep:',
+    ':ewe:',
     ':ram:',
-    ':rabbit:'
+    ':rabbit:',
+    ':llama:',
+    ':bison:'
 ]
 
 ANIMALS_BUGS = [
     ':lady_beetle:',
     ':honeybee:',
-    ':butterfly:'
+    ':butterfly:',
+    ':snail:',
+    ':ant:',
+    ':beetle:',
+    ':mosquito:',
+    ':cricket:'
 ]
 
 ANIMALS_BIRDS = [
@@ -41,7 +48,16 @@ ANIMALS_NON_FARM = [
     ':chipmunk:',
     ':rat:',
     ':mouse:',
-    ':rabbit:'
+    ':black_cat:',
+    ':rabbit:',
+    ':hedgehog:',
+    ':chipmunk:',
+    ':beaver:',
+    ':skunk:',
+    ':badger:',
+    ':raccoon:',
+    ':deer:',
+
 ]
 
 PLANTS_FIELD = [
@@ -53,7 +69,9 @@ PLANTS_FIELD = [
     ':mushroom:',
     ':sheaf_of_rice:',
     ':four_leaf_clover:',
-    ':shamrock:'
+    ':shamrock:',
+    ':rock:',
+    ':wood:'
 ]
 
 PLANTS_FLOWERS = [
@@ -71,7 +89,8 @@ PLANTS_FLOWERS = [
 PLANTS_TREES = [
     ':deciduous_tree:',
     ':evergreen_tree:',
-    ':palm_tree:'
+    ':palm_tree:',
+    ':cactus:'
 ]
 
 PLANTS_CROPS = [
@@ -92,23 +111,41 @@ PLANTS_CROPS = [
     ':potato:',
     ':melon:',
     ':pear:',
-    ':kiwi_fruit:'
+    ':kiwi_fruit:',
+    ':sheaf_of_rice:',
+    ':banana:',
+    ':mango:',
+    ':blueberries:',
+    ':avocado:',
+    ':bell_pepper:',
+    ':leafy_green:',
+    ':broccoli:',
+    ':garlic:',
+    ':onion:'
 ]
+
+# Add 'beans' to crops, introduced in Emoji 14.0 2021
 
 BUILDINGS = [
     ':house:',
     ':house_with_garden:',
     ':derelict_house:',
-    #':house_buildings:',
+    # ':house_buildings:',
     ':Japanese_castle:',
     ':castle:',
     ':tractor:',
-    ':delivery_truck:'
+    ':delivery_truck:',
+    ':rock:',
+    ':wood:',
+    ':hut:',
+    ':tent:',
+    ':pickup_truck:'
 ]
 
 EARTH = [
     ':mountain:',
-    ':snow-capped_mountain:'
+    ':snow-capped_mountain:',
+    ':mount_fuji:'
 ]
 
 SKY = [
@@ -120,9 +157,14 @@ SKY = [
     ':cloud_with_lightning:',
     ':cloud_with_lightning_and_rain:',
     ':cloud_with_rain:',
-    ':cloud_with_snow:'
+    ':cloud_with_snow:',
+    ':flying_saucer:',
+    ':parachute:',
+    ':rocket:',
+    ':comet:'
 ]
 
+# Add moons?
 SKY_SUNS = [
     ':sun:',
     ':sun_behind_cloud:',
@@ -136,7 +178,7 @@ BARRIERS = [
     ':chains:'
 ]
 
-BARRIERS = BARRIERS + EARTH + PLANTS_TREES #+ PLANTS_FLOWERS
+BARRIERS = BARRIERS + EARTH + PLANTS_TREES  # + PLANTS_FLOWERS
 
 WATER = [
     ':water_wave:'
@@ -149,12 +191,18 @@ POND = [
     ':duck:',
     ':spiral_shell:',
     ':shrimp:',
-    ':canoe:'
+    ':canoe:',
+    ':otter:',
+    ':swan:',
+    ':flamingo:',
+    ':crab:',
+    ':lobster:'
 ]
+
+# add merpeople to pond?
 
 PEOPLE = [
     ':cowboy_hat_face:',
-    ':robot_face:',
     ':man_farmer:',
     ':man_farmer_dark_skin_tone:',
     ':man_farmer_light_skin_tone:',
@@ -166,9 +214,32 @@ PEOPLE = [
     ':woman_farmer_light_skin_tone:',
     ':woman_farmer_medium-dark_skin_tone:',
     ':woman_farmer_medium-light_skin_tone:',
-    ':woman_farmer_medium_skin_tone:'
+    ':woman_farmer_medium_skin_tone:',
+    ':farmer:',
+    ':farmer_dark_skin_tone:',
+    ':farmer_light_skin_tone:',
+    ':farmer_medium-dark_skin_tone:',
+    ':farmer_medium-light_skin_tone:',
+    ':farmer_medium_skin_tone:'
 ]
 
-__ALL__ = ANIMALS_FARM + ANIMALS_BUGS + ANIMALS_BIRDS + ANIMALS_NON_FARM + PLANTS_FIELD + PLANTS_FLOWERS + PLANTS_TREES + PLANTS_CROPS + BUILDINGS + EARTH + SKY + SKY_SUNS + BARRIERS + WATER + POND + PEOPLE
+SPOOKY = [
+    ':robot:',
+    ':japanese_ogre:',
+    ':ghost:',
+    ':skull:',
+    ':angry_face_with_horns:',
+    ':smiling_face_with_horns:',
+    ':clown_face:'
+]
 
-#print(emoji.emojize(''.join(__ALL__)))
+__ALL__ = ANIMALS_FARM + ANIMALS_BUGS + ANIMALS_BIRDS + ANIMALS_NON_FARM + PLANTS_FIELD + PLANTS_FLOWERS + \
+    PLANTS_TREES + PLANTS_CROPS + BUILDINGS + EARTH + \
+    SKY + SKY_SUNS + BARRIERS + WATER + POND + PEOPLE
+
+# Run chars.py on it's own to check for typos in emoji name
+if __name__ == '__main__':
+
+    import emoji
+
+    print(emoji.emojize(''.join(__ALL__)))
