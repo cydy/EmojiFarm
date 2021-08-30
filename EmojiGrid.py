@@ -11,21 +11,23 @@ import emoji
 from Biome import *
 
 class EmojiGrid:
-    rows = 10  # y axis
-    cols = 13  # x axis
-    size = (rows, cols)
-    y_length = rows - 1
-    x_length = cols - 1
+    rows = None  # y axis
+    cols = None  # x axis
     edge_buffer = 3  # 3 array space buffer on side
     filler = '-'
-    canvas = np.array([(1, 2, 3), (8, 9, 4), (7, 6, 5)])
+    canvas = None
+
+    def __init__(self):
+        self.rows = 10  # y axis
+        self.cols = 13  # x axis
+        self.size = (self.rows, self.cols)
+        self.y_length = self.rows - 1
+        self.x_length = self.cols - 1
+        self.canvas = np.array([(1, 2, 3), (8, 9, 4), (7, 6, 5)])
 
     def replaceSection(self, grid_input, cur, new):
         cords = np.argwhere(grid_input == cur)
         grid_input[cords[:, 0], cords[:, 1]] = new
-
-    # def __init__(self):
-    #     print(self)
 
     def __str__(self):
         return '\n'.join([''.join([str(elem) for elem in row]) for row in self.canvas]) + '\n'
@@ -68,7 +70,9 @@ class EmojiGrid:
         # 3 = keep both
 
         dir_x = random.randint(0, 3)
+        print("direction x: ", dir_x)
         dir_y = random.randint(0, 3)
+        print("direction x: ", dir_y)
 
         if ((dir_x == 0) or (dir_y == 0) and (((dir_x == 1) or (dir_y == 1)) or ((dir_x == 2) or (dir_y == 2)))):
             print('no split')
@@ -121,7 +125,7 @@ class EmojiGrid:
             else:
                 self.replaceSection(self.canvas, 8, random.choice([1, 7]))
 
-        print(self)
+        print("post splitGen:\n{result}".format(result=self))
 
     def decideSplits(self):
         #decide to keep split or remove & merge
@@ -148,7 +152,7 @@ class EmojiGrid:
         # DECIDE ONE SPLIT
 
         print(dirs)
-        print(self)
+        print("post decideSplits:\n{result}".format(result=self))
 
     def decideBarriers(self):
         #decide whether to keep remaining split as barrier
@@ -163,7 +167,7 @@ class EmojiGrid:
             #print("found a 9")
             self.replaceSection(self.canvas, 9, self.getBarrierNums()[-1])
         
-        print(self)
+        print("post decideBarriers:\n{result}".format(result=self))
 
     def buildFarm(self):
         self.splitGen()
@@ -202,7 +206,6 @@ class EmojiGrid:
         return '\n'.join([emoji.emojize(''.join([str(elem) for elem in row])) for row in self.canvas_strings])
 
 if __name__ == '__main__':
-
     moji = EmojiGrid()
     moji.buildFarm()
-
+    #print(moji.output_emojis())
