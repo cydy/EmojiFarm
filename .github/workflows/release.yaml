@@ -55,8 +55,13 @@ jobs:
           GOOS: ${{ matrix.goos }}
           GOARCH: ${{ matrix.goarch }}
         run: |
-          # Build for all platforms with the same optimization flags
-          tinygo build -no-debug -panic=trap -scheduler=none -gc=leaking -opt=s -o ${{ steps.set_binary_name.outputs.BINARY_NAME }} .
+          if [ "${{ matrix.goos }}" = "windows" ] && [ "${{ matrix.goarch }}" = "amd64" ]; then
+            # Windows AMD64 build without scheduler flag
+            tinygo build -no-debug -panic=trap -gc=leaking -opt=s -o ${{ steps.set_binary_name.outputs.BINARY_NAME }} .
+          else
+            # Build for all platforms with the same optimization flags
+            tinygo build -no-debug -panic=trap -scheduler=none -gc=leaking -opt=s -o ${{ steps.set_binary_name.outputs.BINARY_NAME }} .
+          fi
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
