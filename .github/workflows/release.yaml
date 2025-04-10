@@ -1,0 +1,83 @@
+name: Build and Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    name: Build and Release
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        goos: [linux, darwin, windows]
+        goarch: [amd64, arm64]
+        exclude:
+          # Windows on arm64 might have compatibility issues
+          - goos: windows
+            goarch: arm64
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.24.2'
+          check-latest: true
+          cache: true
+
+      - name: Set up TinyGo
+        uses: acifani/setup-tinygo@v2
+        with:
+          tinygo-version: 0.30.0
+
+      - name: Get app name
+        id: get_app_name
+        run: echo "APP_NAME=$(basename ${{ github.repository }})" >> $GITHUB_OUTPUT
+
+      - name: Set binary name
+        id: set_binary_name
+        run: |
+          if [ "${{ matrix.goos }}" = "windows" ]; then
+            echo "BINARY_NAME=${{ steps.get_app_name.outputs.APP_NAME }}-${{ matrix.goos }}-${{ matrix.goarch }}.exe" >> $GITHUB_OUTPUT
+          else
+            echo "BINARY_NAME=${{ steps.get_app_name.outputs.APP_NAME }}-${{ matrix.goos }}-${{ matrix.goarch }}" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Build with TinyGo
+        env:
+          GOOS: ${{ matrix.goos }}
+          GOARCH: ${{ matrix.goarch }}
+        run: |
+          # Build for all platforms with the same optimization flags
+          tinygo build -no-debug -panic=trap -scheduler=none -gc=leaking -opt=s -o ${{ steps.set_binary_name.outputs.BINARY_NAME }} .
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ steps.set_binary_name.outputs.BINARY_NAME }}
+          path: ${{ steps.set_binary_name.outputs.BINARY_NAME }}
+          retention-days: 1
+
+  release:
+    name: Create Release
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: ./artifacts
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: ./artifacts/**/*
+          generate_release_notes: true
