@@ -57,7 +57,7 @@ jobs:
         run: |
           if [ "${{ matrix.goos }}" = "windows" ] && [ "${{ matrix.goarch }}" = "amd64" ]; then
             # Windows AMD64 build without scheduler flag
-            tinygo build -no-debug -panic=trap -gc=leaking -opt=s -o ${{ steps.set_binary_name.outputs.BINARY_NAME }} .
+            tinygo build -opt=s -o ${{ steps.set_binary_name.outputs.BINARY_NAME }} .
           else
             # Build for all platforms with the same optimization flags
             tinygo build -no-debug -panic=trap -scheduler=none -gc=leaking -opt=s -o ${{ steps.set_binary_name.outputs.BINARY_NAME }} .
