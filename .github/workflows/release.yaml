@@ -1,89 +1,79 @@
 name: Build and Release
-
 on:
   push:
     branches:
       - main
   workflow_dispatch:
-
 permissions:
   contents: write
-
 jobs:
   build:
-    name: Build and Release
+    name: Build
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        goos: [linux, darwin, windows]
-        goarch: [amd64, arm64]
-        exclude:
-          # Windows on arm64 might have compatibility issues
-          - goos: windows
-            goarch: arm64
-
+        target:
+          - {goos: "linux", goarch: "amd64"}
+          - {goos: "linux", goarch: "arm64"}
+          - {goos: "darwin", goarch: "amd64"}
+          - {goos: "darwin", goarch: "arm64"}
+          - {goos: "windows", goarch: "amd64"}
+          - {goos: "wasm", goarch: "wasm"}
     steps:
       - uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-      
       - name: Set up Go
         uses: actions/setup-go@v5
         with:
           go-version: '1.23'
           check-latest: true
           cache: true
-
       - name: Set up TinyGo
         uses: acifani/setup-tinygo@v2
         with:
           tinygo-version: 0.35.0
-      
-      - name: Generate version number
-        id: version
-        run: |
-          # Get the current date in YYYY.MM.DD format
-          DATE_VERSION=$(date +'%Y.%m.%d')
-          # Get the count of commits today
-          COMMIT_COUNT=$(git log --oneline --since="midnight" | wc -l)
-          # Generate version in format YYYY.MM.DD.X where X is commit number today
-          VERSION="v$DATE_VERSION.$COMMIT_COUNT"
-          echo "VERSION=$VERSION" >> $GITHUB_ENV
-          echo "Generated version: $VERSION"
-      
       - name: Get app name
         id: get_app_name
         run: echo "APP_NAME=$(basename ${{ github.repository }})" >> $GITHUB_OUTPUT
-
       - name: Set binary name
         id: set_binary_name
         run: |
-          if [ "${{ matrix.goos }}" = "windows" ]; then
-            echo "BINARY_NAME=${{ steps.get_app_name.outputs.APP_NAME }}-${{ matrix.goos }}-${{ matrix.goarch }}.exe" >> $GITHUB_OUTPUT
+          if [ "${{ matrix.target.goos }}" = "windows" ]; then
+            echo "BINARY_NAME=${{ steps.get_app_name.outputs.APP_NAME }}-${{ matrix.target.goos }}-${{ matrix.target.goarch }}.exe" >> $GITHUB_OUTPUT
+          elif [ "${{ matrix.target.goos }}" = "wasm" ]; then
+            echo "BINARY_NAME=${{ steps.get_app_name.outputs.APP_NAME }}-${{ matrix.target.goos }}.wasm" >> $GITHUB_OUTPUT
           else
-            echo "BINARY_NAME=${{ steps.get_app_name.outputs.APP_NAME }}-${{ matrix.goos }}-${{ matrix.goarch }}" >> $GITHUB_OUTPUT
+            echo "BINARY_NAME=${{ steps.get_app_name.outputs.APP_NAME }}-${{ matrix.target.goos }}-${{ matrix.target.goarch }}" >> $GITHUB_OUTPUT
           fi
-
       - name: Build with TinyGo
         env:
-          GOOS: ${{ matrix.goos }}
-          GOARCH: ${{ matrix.goarch }}
+          GOOS: ${{ matrix.target.goos }}
+          GOARCH: ${{ matrix.target.goarch }}
         run: |
-          if [ "${{ matrix.goos }}" = "windows" ] && [ "${{ matrix.goarch }}" = "amd64" ]; then
+          if [ "${{ matrix.target.goos }}" = "windows" ] && [ "${{ matrix.target.goarch }}" = "amd64" ]; then
             # Windows AMD64 build without scheduler flag
             tinygo build -opt=s -o ${{ steps.set_binary_name.outputs.BINARY_NAME }} .
+          elif [ "${{ matrix.target.goos }}" = "wasm" ]; then
+            # WebAssembly build
+            tinygo build -target=wasm -no-debug -opt=s -o ${{ steps.set_binary_name.outputs.BINARY_NAME }} .
+            # Copy the JavaScript support file that's needed to use wasm
+            cp $(tinygo env TINYGOROOT)/targets/wasm_exec.js ./wasm_exec.js
           else
             # Build for all platforms with the same optimization flags
             tinygo build -no-debug -panic=trap -scheduler=none -gc=leaking -opt=s -o ${{ steps.set_binary_name.outputs.BINARY_NAME }} .
           fi
-
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
           name: ${{ steps.set_binary_name.outputs.BINARY_NAME }}
           path: ${{ steps.set_binary_name.outputs.BINARY_NAME }}
           retention-days: 1
-
+      - name: Upload wasm support file
+        if: matrix.target.goos == 'wasm'
+        uses: actions/upload-artifact@v4
+        with:
+          name: wasm_exec.js
+          path: wasm_exec.js
+          retention-days: 1
   release:
     name: Create Release
     needs: build
@@ -91,7 +81,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          fetch-depth: 0  # This is important for versioning
+          fetch-depth: 0
       
       - name: Generate version number
         id: version
@@ -105,13 +95,22 @@ jobs:
           echo "VERSION=$VERSION" >> $GITHUB_ENV
           echo "Generated version: $VERSION"
       
+      - name: Create tag
+        run: |
+          git config --local user.email "action@github.com"
+          git config --local user.name "GitHub Action"
+          git tag -a ${{ env.VERSION }} -m "Release ${{ env.VERSION }}"
+          git push origin ${{ env.VERSION }}
+      
       - name: Download all artifacts
         uses: actions/download-artifact@v4
         with:
           path: ./artifacts
-
+      
       - name: Create Release
         uses: softprops/action-gh-release@v2
         with:
           files: ./artifacts/**/*
+          tag_name: ${{ env.VERSION }}
+          name: Release ${{ env.VERSION }}
           generate_release_notes: true
