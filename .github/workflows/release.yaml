@@ -54,7 +54,7 @@ jobs:
             tinygo build -opt=s -o ${{ steps.set_binary_name.outputs.BINARY_NAME }} .
           elif [ "${{ matrix.target.goos }}" = "wasm" ]; then
             # WebAssembly build
-            tinygo build -target=wasm -no-debug -opt=s -o ${{ steps.set_binary_name.outputs.BINARY_NAME }} .
+            tinygo build -target=wasm -no-debug -panic=trap -scheduler=none -gc=leaking -opt=s -o ${{ steps.set_binary_name.outputs.BINARY_NAME }} .
             # Copy the JavaScript support file that's needed to use wasm
             cp $(tinygo env TINYGOROOT)/targets/wasm_exec.js ./wasm_exec.js
           else
