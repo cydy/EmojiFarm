@@ -6,12 +6,13 @@ import (
 	"math/rand"
 )
 
+// Biome represents a section of the farm
 type Biome struct {
 	grid           *EmojiGrid
 	sectionCanvas  [][]string
 	sectNum        int
 	cords          [][]int
-	availableTypes map[int]func()
+	availableTypes map[int]func(*VerboseLogger)
 	rng            *rand.Rand
 }
 
@@ -47,7 +48,7 @@ func NewBiome(grid *EmojiGrid, sectionCanvas [][]string, sectNum int, rng *rand.
 		rng:           rng,
 	}
 
-	b.availableTypes = map[int]func(){
+	b.availableTypes = map[int]func(*VerboseLogger){
 		0: b.crops,
 		1: b.animals,
 		2: b.field,
@@ -67,18 +68,14 @@ func (b *Biome) replaceSection(gridInput [][]string, cur, new string) {
 	}
 }
 
-func (b *Biome) crops() {
-	//if rand.Intn(3) == 1 {
-	if true {
-		fmt.Println("crops: whole")
-		crop1 := PLANTS_CROPS[b.rng.Intn(len(PLANTS_CROPS))]
-		fmt.Println("crop:", crop1)
-
-		b.replaceSection(b.sectionCanvas, fmt.Sprint(b.sectNum), crop1)
-	}
+func (b *Biome) crops(logger *VerboseLogger) {
+	logger.Log("crops: whole\n")
+	crop1 := PLANTS_CROPS[b.rng.Intn(len(PLANTS_CROPS))]
+	logger.Log("crop: %s\n", crop1)
+	b.replaceSection(b.sectionCanvas, fmt.Sprint(b.sectNum), crop1)
 }
 
-func (b *Biome) animals() {
+func (b *Biome) animals(logger *VerboseLogger) {
 	placementCords := b.cords
 	numberOfCords := len(placementCords)
 
@@ -90,7 +87,7 @@ func (b *Biome) animals() {
 	fillPercentage := b.rng.Float64()*(0.6-0.2) + 0.2
 	numCordsToFill := int(math.Round(float64(numberOfCords) * fillPercentage))
 
-	fmt.Printf("filling %d, %.2f, %d\n", numberOfCords, fillPercentage, numCordsToFill)
+	logger.Log("filling %d, %.2f, %d\n", numberOfCords, fillPercentage, numCordsToFill)
 
 	// Shuffle the placement coordinates using b.rng
 	b.rng.Shuffle(len(placementCords), func(i, j int) {
@@ -99,17 +96,17 @@ func (b *Biome) animals() {
 
 	var animalSet []string
 	if b.rng.Intn(2) == 1 {
-		fmt.Println("animals: livestock")
+		logger.Log("animals: livestock\n")
 		animalSet = ANIMALS_FARM
 	} else {
-		fmt.Println("animals: birds")
+		logger.Log("animals: birds\n")
 		animalSet = ANIMALS_BIRDS
 	}
 
 	if b.rng.Intn(4) == 0 { // 1/4 chance one animal biome
-		fmt.Println("animals #: 1")
+		logger.Log("animals #: 1\n")
 		animal1 := animalSet[b.rng.Intn(len(animalSet))]
-		fmt.Println("animal1:", animal1)
+		logger.Log("animal1: %s\n", animal1)
 		for i := range numCordsToFill {
 			cord := placementCords[i]
 			b.sectionCanvas[cord[0]][cord[1]] = animal1
@@ -117,7 +114,7 @@ func (b *Biome) animals() {
 	} else {
 		animalMax := min(5, numCordsToFill)
 		animalNum := b.rng.Intn(animalMax) + 1
-		fmt.Println("animals #:", animalNum)
+		logger.Log("animals #: %d\n", animalNum)
 
 		animalChoices := randomSample(animalSet, animalNum, b.rng)
 		animalDistribution := splitNum(animalNum, numCordsToFill, b.rng)
@@ -133,7 +130,7 @@ func (b *Biome) animals() {
 	}
 }
 
-func (b *Biome) field() {
+func (b *Biome) field(logger *VerboseLogger) {
 	placementCords := b.cords
 	numberOfCords := len(placementCords)
 
@@ -145,7 +142,7 @@ func (b *Biome) field() {
 	fillPercentage := b.rng.Float64()*(0.8-0.2) + 0.2
 	numCordsToFill := int(math.Round(float64(numberOfCords) * fillPercentage))
 
-	fmt.Printf("filling %d, %.2f, %d\n", numberOfCords, fillPercentage, numCordsToFill)
+	logger.Log("filling %d, %.2f, %d\n", numberOfCords, fillPercentage, numCordsToFill)
 
 	// Shuffle the placement coordinates using b.rng
 	b.rng.Shuffle(len(placementCords), func(i, j int) {
@@ -154,17 +151,17 @@ func (b *Biome) field() {
 
 	var plantSet []string
 	if b.rng.Intn(2) == 1 {
-		fmt.Println("plants: field")
+		logger.Log("plants: field\n")
 		plantSet = PLANTS_FIELD
 	} else {
-		fmt.Println("plants: flowers")
+		logger.Log("plants: flowers\n")
 		plantSet = PLANTS_FLOWERS
 	}
 
 	if b.rng.Intn(4) == 0 { // 1/4 chance one plant biome
-		fmt.Println("plants #: 1")
+		logger.Log("plants #: 1\n")
 		plant1 := plantSet[b.rng.Intn(len(plantSet))]
-		fmt.Println("plant1:", plant1)
+		logger.Log("plant1: %s\n", plant1)
 		for i := range numCordsToFill {
 			cord := placementCords[i]
 			b.sectionCanvas[cord[0]][cord[1]] = plant1
@@ -172,7 +169,7 @@ func (b *Biome) field() {
 	} else {
 		plantMax := min(5, numCordsToFill)
 		plantNum := b.rng.Intn(plantMax) + 1
-		fmt.Println("plants #:", plantNum)
+		logger.Log("plants #: %d\n", plantNum)
 
 		plantChoices := randomSample(plantSet, plantNum, b.rng)
 		plantDistribution := splitNum(plantNum, numCordsToFill, b.rng)
@@ -188,12 +185,14 @@ func (b *Biome) field() {
 	}
 }
 
-func (b *Biome) pond() {
+// pond builds a pond biome
+func (b *Biome) pond(logger *VerboseLogger) {
+	logger.Log("Building pond biome\n")
 	placementCords := b.cords
 	numberOfCords := len(placementCords)
 	fillPercentage := b.rng.Float64()*0.4 + 0.1
 	numCordsToFill := int(math.Round(float64(numberOfCords) * fillPercentage))
-	fmt.Printf("filling %d, %.2f, %d\n", numberOfCords, fillPercentage, numCordsToFill)
+	logger.Log("filling %d, %.2f, %d\n", numberOfCords, fillPercentage, numCordsToFill)
 
 	// Shuffle placementCords using b.rng
 	b.rng.Shuffle(len(placementCords), func(i, j int) {
@@ -206,16 +205,16 @@ func (b *Biome) pond() {
 	pawnSet := POND
 
 	if b.rng.Intn(4) == 0 { // 3/4 chance one pawn biome
-		fmt.Println("pawns #: 1")
+		logger.Log("pawns #: 1\n")
 		pawn1 := pawnSet[b.rng.Intn(len(pawnSet))]
-		fmt.Println("pawn1:", pawn1)
+		logger.Log("pawn1: %s\n", pawn1)
 		for _, cord := range placementCords {
 			b.sectionCanvas[cord[0]][cord[1]] = pawn1
 		}
 	} else {
 		pawnMax := min(5, numCordsToFill)
 		pawnNum := b.rng.Intn(pawnMax) + 1
-		fmt.Println("pawns #:", pawnNum)
+		logger.Log("pawns #: %d\n", pawnNum)
 
 		pawnChoices := randomSample(pawnSet, pawnNum, b.rng)
 		pawnDistribution := splitNum(pawnNum, numCordsToFill, b.rng)
@@ -230,25 +229,25 @@ func (b *Biome) pond() {
 	}
 }
 
-func (b *Biome) barrier() {
-	if true { // Always true for now, can be changed to match Python logic if needed
-		fmt.Println("barrier: whole")
-		barrier1 := BARRIERS[b.rng.Intn(len(BARRIERS))]
-		fmt.Println("barrier:", barrier1)
-
-		b.replaceSection(b.sectionCanvas, fmt.Sprintf("%d", b.sectNum), barrier1)
-	}
+// barrier builds a barrier biome
+func (b *Biome) barrier(logger *VerboseLogger) {
+	logger.Log("Building barrier biome\n")
+	logger.Log("barrier: whole\n")
+	barrier1 := BARRIERS[b.rng.Intn(len(BARRIERS))]
+	logger.Log("barrier: %s\n", barrier1)
+	b.replaceSection(b.sectionCanvas, fmt.Sprintf("%d", b.sectNum), barrier1)
 }
 
-func (b *Biome) Build() {
-	fmt.Printf("\nsection #: %d\n", b.sectNum)
+// Build builds the biome
+func (b *Biome) Build(logger *VerboseLogger) {
+	logger.Log("section #: %d\n", b.sectNum)
 
 	if b.sectNum%2 == 0 {
-		fmt.Println("biome type: BARRIER")
-		b.barrier()
+		logger.Log("biome type: BARRIER\n")
+		b.barrier(logger)
 	} else {
 		biomeType := b.rng.Intn(len(b.availableTypes))
-		b.availableTypes[biomeType]()
+		b.availableTypes[biomeType](logger)
 	}
 }
 
