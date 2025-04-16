@@ -9,6 +9,30 @@ import (
 	"time"
 )
 
+// VerboseLogger is a helper for verbose logging
+type VerboseLogger struct {
+	enabled bool
+}
+
+// NewVerboseLogger creates a new verbose logger
+func NewVerboseLogger(enabled bool) *VerboseLogger {
+	return &VerboseLogger{enabled: enabled}
+}
+
+// Log prints a message if verbose logging is enabled
+func (v *VerboseLogger) Log(format string, args ...interface{}) {
+	if v.enabled {
+		fmt.Printf(format, args...)
+	}
+}
+
+// Logln prints a message with newline if verbose logging is enabled
+func (v *VerboseLogger) Logln(args ...interface{}) {
+	if v.enabled {
+		fmt.Println(args...)
+	}
+}
+
 // EmojiGrid structure similar to Python class
 type EmojiGrid struct {
 	rows, cols    int
@@ -67,20 +91,20 @@ func (e *EmojiGrid) GetBarrierNums() []int {
 }
 
 // SplitGen generates a split based on random values (placeholder logic)
-func (e *EmojiGrid) SplitGen() {
+func (e *EmojiGrid) SplitGen(logger *VerboseLogger) {
 	// Possible direction: 0 = none, 1 = keep '2' or '4' barrier, 2 = keep '6' or '8' barrier, 3 = keep both
 	dirX := e.rng.Intn(4)
-	fmt.Printf("Direction X: %d\n", dirX)
+	logger.Log("Direction X: %d\n", dirX)
 	dirY := e.rng.Intn(4)
-	fmt.Printf("Direction Y: %d\n", dirY)
+	logger.Log("Direction Y: %d\n", dirY)
 
 	// Conditions to skip the split
 	if (dirX == 0 || dirY == 0) && ((dirX == 1 || dirY == 1) || (dirX == 2 || dirY == 2)) {
-		fmt.Println("No split")
+		logger.Logln("No split")
 		if e.rng.Intn(2) == 0 { // Retry split condition
 			dirX = e.rng.Intn(4)
 			dirY = e.rng.Intn(4)
-			fmt.Println("Retry split!")
+			logger.Logln("Retry split!")
 			return
 		} else {
 			for i := range e.canvasInt {
@@ -90,7 +114,7 @@ func (e *EmojiGrid) SplitGen() {
 					}
 				}
 			}
-			fmt.Println("No split again!")
+			logger.Logln("No split again!")
 			return
 		}
 	}
@@ -132,8 +156,8 @@ func (e *EmojiGrid) SplitGen() {
 		}
 	}
 
-	fmt.Println("Post splitGen:")
-	e.PrintCanvas()
+	logger.Logln("Post splitGen:")
+	e.PrintCanvas(logger)
 }
 
 // findValidNeighbors finds non-barrier neighbors for a given section number
@@ -170,11 +194,13 @@ func (e *EmojiGrid) findValidNeighbors(sectionNum int) []int {
 	return result
 }
 
-func (e *EmojiGrid) DecideSplits() {
+// DecideSplits decides which splits to keep
+func (e *EmojiGrid) DecideSplits(logger *VerboseLogger) {
 	// decide to keep split or remove & merge
 
 	// If only one section exists, return
 	if len(e.getSections()) == 1 {
+		logger.Logln("Only one section exists, skipping splits.")
 		return
 	}
 
@@ -198,16 +224,16 @@ func (e *EmojiGrid) DecideSplits() {
 		}
 
 		if e.rng.Intn(2) == 0 { // Remove split
-			fmt.Printf("Attempting to remove barrier: %d\n", i)
+			logger.Log("Attempting to remove barrier: %d\n", i)
 			validNeighbors := e.findValidNeighbors(i)
-			fmt.Printf("Valid neighbors for %d: %v\n", i, validNeighbors)
+			logger.Log("Valid neighbors for %d: %v\n", i, validNeighbors)
 
 			if len(validNeighbors) > 0 {
 				// Choose a random valid neighbor to merge into
 				// Sort validNeighbors before choosing randomly to ensure determinism
 				sort.Ints(validNeighbors)
 				mergeTarget := validNeighbors[e.rng.Intn(len(validNeighbors))]
-				fmt.Printf("Merging %d into %d\n", i, mergeTarget)
+				logger.Log("Merging %d into %d\n", i, mergeTarget)
 				e.ReplaceSection(i, mergeTarget)
 
 				// Remove the merged barrier from the original dirs slice
@@ -218,11 +244,11 @@ func (e *EmojiGrid) DecideSplits() {
 					}
 				}
 			} else {
-				fmt.Printf("Could not find valid neighbors for %d, keeping barrier.\n", i)
+				logger.Log("Could not find valid neighbors for %d, keeping barrier.\n", i)
 				// Keep split (do nothing) or implement fallback
 			}
 		} else {
-			fmt.Printf("Keeping barrier: %d\n", i)
+			logger.Log("Keeping barrier: %d\n", i)
 			// Keep split
 			continue
 		}
@@ -230,9 +256,9 @@ func (e *EmojiGrid) DecideSplits() {
 
 	// DECIDE ONE SPLIT
 
-	fmt.Println("Remaining barriers:", dirs) // Print barriers that were kept
-	fmt.Println("Post decideSplits:")
-	e.PrintCanvas()
+	logger.Log("Remaining barriers: %v\n", dirs) // Print barriers that were kept
+	logger.Logln("Post decideSplits:")
+	e.PrintCanvas(logger)
 }
 
 // Helper function to get coordinates for each section
@@ -277,11 +303,11 @@ func is2x2Square(coords [][2]int) bool {
 	return (maxRow-minRow == 1) && (maxCol-minCol == 1)
 }
 
-func (e *EmojiGrid) DecideBarriers() {
+func (e *EmojiGrid) DecideBarriers(logger *VerboseLogger) {
 	// Decide whether to keep remaining split as a barrier
 	if e.rng.Intn(3) != 0 {
 		// Replace all barriers (evens) with 2
-		fmt.Println("Replace all barriers (evens) with 2")
+		logger.Log("Replace all barriers (evens) with 2\n")
 		for i := 2; i < 10; i += 2 {
 			e.ReplaceSection(i, 2)
 		}
@@ -295,18 +321,18 @@ func (e *EmojiGrid) DecideBarriers() {
 	coords9, hasNine := sectionCoords[9]
 	// It's assumed section 9 should only have 1 coordinate at this stage for the logic to work
 	if hasNine && len(coords9) != 1 {
-		fmt.Printf("Warning: Section 9 has %d coordinates, expected 1. Geometric check might be unreliable.\n", len(coords9))
+		logger.Log("Warning: Section 9 has %d coordinates, expected 1. Geometric check might be unreliable.\n", len(coords9))
 		// Proceed anyway, but be aware
 	}
 
 	if hasNine {
-		fmt.Println("Handling section 9 replacement with order: Rule 2 -> Rule 1 -> Rule 3")
+		logger.Log("Handling section 9 replacement with order: Rule 2 -> Rule 1 -> Rule 3\n")
 		mergeTarget := -1 // Initialize merge target
 
 		// --- Start Reordered Logic ---
 
 		// 1. Apply Rule 2: Frequency 3 with Geometric Tie-breaker
-		fmt.Println("Checking Rule 2 (Freq 3 + Geometry)...")
+		logger.Log("Checking Rule 2 (Freq 3 + Geometry)...\n")
 		sectionsWithFreq3 := []int{}
 		for section, coords := range sectionCoords {
 			// Only consider main sections (1, 3, 5, 7) for frequency check
@@ -316,16 +342,16 @@ func (e *EmojiGrid) DecideBarriers() {
 				}
 			}
 		}
-		fmt.Printf("Sections with frequency 3: %v\n", sectionsWithFreq3)
+		logger.Log("Sections with frequency 3: %v\n", sectionsWithFreq3)
 
 		if len(sectionsWithFreq3) == 1 {
 			// Only one section has frequency 3 - simple case
 			mergeTarget = sectionsWithFreq3[0]
-			fmt.Printf("Rule 2 Applied (Unique Freq 3): Merging 9 into section %d\n", mergeTarget)
+			logger.Log("Rule 2 Applied (Unique Freq 3): Merging 9 into section %d\n", mergeTarget)
 		} else if len(sectionsWithFreq3) > 1 {
 			sort.Ints(sectionsWithFreq3) // Sort for deterministic iteration
 			// Tie-breaker: Check which one forms a 2x2 square with 9
-			fmt.Println("Rule 2 Tie-breaker: Checking for 2x2 square formation...")
+			logger.Log("Rule 2 Tie-breaker: Checking for 2x2 square formation...\n")
 			formingSquareSections := []int{}
 			coords9 = sectionCoords[9] // Ensure we have the coords for 9
 
@@ -336,49 +362,49 @@ func (e *EmojiGrid) DecideBarriers() {
 					combinedCoords = append(combinedCoords, coords9[0])    // Add coord of 9
 
 					if is2x2Square(combinedCoords) {
-						fmt.Printf("  - Section %d forms 2x2 square with 9.\n", section)
+						logger.Log("  - Section %d forms 2x2 square with 9.\n", section)
 						formingSquareSections = append(formingSquareSections, section)
 					} else {
-						fmt.Printf("  - Section %d does NOT form 2x2 square with 9.\n", section)
+						logger.Log("  - Section %d does NOT form 2x2 square with 9.\n", section)
 					}
 				}
 
 				if len(formingSquareSections) == 1 {
 					// Exactly one section forms a 2x2 square - perfect!
 					mergeTarget = formingSquareSections[0]
-					fmt.Printf("Rule 2 Applied (Geometric Tie-breaker): Merging 9 into section %d\n", mergeTarget)
+					logger.Log("Rule 2 Applied (Geometric Tie-breaker): Merging 9 into section %d\n", mergeTarget)
 				} else if len(formingSquareSections) > 1 {
 					sort.Ints(formingSquareSections)       // Sort potential targets
 					mergeTarget = formingSquareSections[0] // Choose deterministically
-					fmt.Printf("Rule 2 Applied (Geometric Tie-breaker - Multiple): Merging 9 into section %d (smallest forming square)\n", mergeTarget)
+					logger.Log("Rule 2 Applied (Geometric Tie-breaker - Multiple): Merging 9 into section %d (smallest forming square)\n", mergeTarget)
 				} else {
-					fmt.Println("Rule 2 Tie-breaker Failed: No section formed a 2x2 square.")
+					logger.Log("Rule 2 Tie-breaker Failed: No section formed a 2x2 square.\n")
 				}
 			} else {
-				fmt.Println("Rule 2 Tie-breaker Skipped: Section 9 does not have exactly 1 coordinate.")
+				logger.Log("Rule 2 Tie-breaker Skipped: Section 9 does not have exactly 1 coordinate.\n")
 			}
 		} else {
-			fmt.Println("Rule 2 Did Not Apply: No sections with frequency 3.")
+			logger.Log("Rule 2 Did Not Apply: No sections with frequency 3.\n")
 		}
 
 		// 2. Apply Rule 1: Largest Barrier (only if Rule 2 didn't apply)
 		if mergeTarget == -1 {
-			fmt.Println("Rule 2 did not determine target. Checking Rule 1 (Barriers)...")
+			logger.Log("Rule 2 did not determine target. Checking Rule 1 (Barriers)...\n")
 			remainingBarriers := e.GetBarrierNums()
 			if len(remainingBarriers) > 0 {
 				// Find and set the barrier with the highest number
 				sort.Ints(remainingBarriers)                                  // Sort barriers
 				biggestBarrier := remainingBarriers[len(remainingBarriers)-1] // Get largest after sorting
 				mergeTarget = biggestBarrier
-				fmt.Printf("Rule 1 Applied: Merging 9 into largest barrier: %d\n", mergeTarget)
+				logger.Log("Rule 1 Applied: Merging 9 into largest barrier: %d\n", biggestBarrier)
 			} else {
-				fmt.Println("Rule 1 did not apply (no barriers).")
+				logger.Log("Rule 1 did not apply (no barriers).\n")
 			}
 		}
 
 		// 3. Apply Rule 3: Highest Frequency (only if Rule 2 and Rule 1 didn't apply)
 		if mergeTarget == -1 {
-			fmt.Println("Rule 1 did not determine target. Checking Rule 3 (Highest Frequency)...")
+			logger.Log("Rule 1 did not determine target. Checking Rule 3 (Highest Frequency)...\n")
 
 			maxFreq := 0
 			sectionsWithMaxFreq := []int{}
@@ -394,17 +420,17 @@ func (e *EmojiGrid) DecideBarriers() {
 					}
 				}
 			}
-			fmt.Printf("Highest frequency found: %d, Sections: %v\n", maxFreq, sectionsWithMaxFreq)
+			logger.Log("Highest frequency found: %d, Sections: %v\n", maxFreq, sectionsWithMaxFreq)
 
 			if len(sectionsWithMaxFreq) == 1 {
 				mergeTarget = sectionsWithMaxFreq[0]
-				fmt.Printf("Rule 3 Applied: Merging 9 into section %d (highest frequency: %d)\n", mergeTarget, maxFreq)
+				logger.Log("Rule 3 Applied: Merging 9 into section %d (highest frequency: %d)\n", mergeTarget, maxFreq)
 			} else if len(sectionsWithMaxFreq) > 1 {
 				sort.Ints(sectionsWithMaxFreq) // Tie-breaker (smallest number)
 				mergeTarget = sectionsWithMaxFreq[0]
-				fmt.Printf("Rule 3 Applied (Tie): Merging 9 into section %d (smallest of max freq sections)\n", mergeTarget)
+				logger.Log("Rule 3 Applied (Tie): Merging 9 into section %d (smallest of max freq sections)\n", mergeTarget)
 			} else {
-				fmt.Println("Rule 3 Did Not Apply: No valid sections found (maxFreq=0?).")
+				logger.Log("Rule 3 Did Not Apply: No valid sections found (maxFreq=0?).\n")
 			}
 		}
 
@@ -415,16 +441,16 @@ func (e *EmojiGrid) DecideBarriers() {
 			e.ReplaceSection(9, mergeTarget)
 		} else {
 			// Fallback if NO rules could determine a target
-			fmt.Println("Warning: Could not determine merge target for section 9 based on rules 2, 1, or 3. Replacing with 1 as fallback.")
+			logger.Log("Warning: Could not determine merge target for section 9 based on rules 2, 1, or 3. Replacing with 1 as fallback.\n")
 			e.ReplaceSection(9, 1) // Fallback to section 1
 		}
 	} else {
-		fmt.Println("Section 9 not present.")
+		logger.Log("Section 9 not present.\n")
 	}
 	// --- End Handle Section 9 Replacement ---
 
-	fmt.Println("Post decideBarriers:")
-	e.PrintCanvas()
+	logger.Logln("Post decideBarriers:")
+	e.PrintCanvas(logger)
 }
 
 // GetSections returns unique numbers in the canvas, sorted
@@ -444,18 +470,18 @@ func (e *EmojiGrid) getSections() []int {
 }
 
 // BuildFarm builds the farm structure
-func (e *EmojiGrid) BuildFarm() {
-	fmt.Println("Building Farm:")
-	fmt.Println("-------------")
+func (e *EmojiGrid) BuildFarm(logger *VerboseLogger) {
+	logger.Logln("Building Farm:")
+	logger.Logln("-------------")
 
-	fmt.Println("\n1. Generating Split:")
-	e.SplitGen()
+	logger.Logln("\n1. Generating Split:")
+	e.SplitGen(logger)
 
-	fmt.Println("\n2. Deciding Splits:")
-	e.DecideSplits()
+	logger.Logln("\n2. Deciding Splits:")
+	e.DecideSplits(logger)
 
-	fmt.Println("\n3. Deciding Barriers:")
-	e.DecideBarriers()
+	logger.Logln("\n3. Deciding Barriers:")
+	e.DecideBarriers(logger)
 
 	// Use ExpandAndPadGrid to expand the 3x3 canvas to the full size
 	// Pass the grid's rng instance
@@ -468,28 +494,27 @@ func (e *EmojiGrid) BuildFarm() {
 
 	e.ConvertCanvasToStrings()
 
-	fmt.Println("\n4. Farm Structure:")
-	fmt.Printf("\tBarriers: %v\n", e.GetBarrierNums())
-	fmt.Printf("\tSections: %v\n", e.getSections())
+	logger.Logln("\n4. Farm Structure:")
+	logger.Log("\tBarriers: %v\n", e.GetBarrierNums())
+	logger.Log("\tSections: %v\n", e.getSections())
 
-	fmt.Println("\n5. Building Biomes:")
+	logger.Logln("\n5. Building Biomes:")
 	for _, sectNum := range e.sectionNums {
 		biome := NewBiome(e, e.canvasStrings, sectNum, e.rng)
-		biome.Build()
+		biome.Build(logger)
 		biome.Replace()
 	}
-	fmt.Println("\n6. Numeric canvas:")
-	e.PrintCanvas()
+	logger.Logln("\n6. Numeric canvas:")
+	e.PrintCanvas(logger)
 
-	fmt.Println("\n7. Emoji canvas:")
+	logger.Logln("\n7. Emoji canvas:")
 	e.PrintFinalEmojis()
-
 }
 
 // PrintCanvas prints the canvas (grid)
-func (e *EmojiGrid) PrintCanvas() {
+func (e *EmojiGrid) PrintCanvas(logger *VerboseLogger) {
 	for _, row := range e.canvasInt {
-		fmt.Println(row)
+		logger.Logln(row)
 	}
 }
 
@@ -514,6 +539,7 @@ func (e *EmojiGrid) PrintFinalEmojis() {
 	}
 }
 
+// Convert string to a numeric seed using hash function
 func hashString(s string) uint32 {
 	h := fnv.New32a()
 	h.Write([]byte(s))
@@ -521,25 +547,35 @@ func hashString(s string) uint32 {
 }
 
 func main() {
-	// Define a command-line flag for the seed
+	// Define command-line flags
 	seedFlag := flag.String("seed", "", "(Optional) Seed for deterministic generation (string).")
+	var verbose bool
+	flag.BoolVar(&verbose, "v", false, "Enable verbose output")
+	flag.BoolVar(&verbose, "verbose", false, "Enable verbose output (same as -v)")
 	flag.Parse()
 
 	var seed int64
+	logger := NewVerboseLogger(verbose)
 
-	if *seedFlag == "" {
+	// Check for positional argument first
+	args := flag.Args()
+	if len(args) > 0 && *seedFlag == "" {
+		// Use positional argument if no -seed flag was provided
+		seed = int64(hashString(args[0]))
+		logger.Log("Using seed from positional argument '%s': %d\n", args[0], seed)
+	} else if *seedFlag != "" {
+		// Use -seed flag if provided
+		seed = int64(hashString(*seedFlag))
+		logger.Log("Using seed from -seed flag '%s': %d\n", *seedFlag, seed)
+	} else {
 		// No seed provided, use current time
 		seed = time.Now().UnixNano()
-		fmt.Printf("Using time-based seed: %d\n", seed)
-	} else {
-		// Convert string to a numeric seed using hash function
-		seed = int64(hashString(*seedFlag))
-		fmt.Printf("Using seed from seed string '%s': %d\n", *seedFlag, seed)
+		logger.Log("Using time-based seed: %d\n", seed)
 	}
 
 	// Create a new grid with the determined seed
 	grid := NewEmojiGrid(seed)
 
 	// Build the farm
-	grid.BuildFarm()
+	grid.BuildFarm(logger)
 }
