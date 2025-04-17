@@ -30,12 +30,12 @@ jobs:
               owner: context.repo.owner,
               repo: context.repo.repo,
             });
-            return response.data.tag_name;
+            return response.data.tag_name.replace(/"/g, '');
       
       - name: Download WASM files
         run: |
           mkdir -p docs
-          curl -L "https://github.com/${{ github.repository }}/releases/download/${{ steps.get_release.outputs.result }}/emojifarm-slim.wasm" -o docs/emojifarm-slim.wasm
+          curl -L "https://github.com/${{ github.repository }}/releases/download/${{ steps.get_release.outputs.result }}/EmojiFarm-wasm.wasm" -o docs/EmojiFarm-wasm.wasm
           curl -L "https://github.com/${{ github.repository }}/releases/download/${{ steps.get_release.outputs.result }}/wasm_exec.js" -o docs/wasm_exec.js
       
       - name: Move and rename HTML file
@@ -46,7 +46,7 @@ jobs:
         uses: actions/configure-pages@v3
       
       - name: Upload artifact
-        uses: actions/upload-pages-artifact@v2
+        uses: actions/upload-artifact@v4
         with:
           path: 'docs'
           
