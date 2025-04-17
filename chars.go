@@ -1,3 +1,5 @@
+//go:build js && wasm
+
 package main
 
 var ANIMALS_FARM = []string{
