@@ -32,15 +32,26 @@ jobs:
             });
             return response.data.tag_name.replace(/"/g, '');
       
+      - name: Prepare docs directory
+        run: |
+          rm -rf docs
+          mkdir -p docs
+      
       - name: Download WASM files
         run: |
-          mkdir -p docs
           curl -L "https://github.com/${{ github.repository }}/releases/download/${{ steps.get_release.outputs.result }}/EmojiFarm-wasm.wasm" -o docs/EmojiFarm-wasm.wasm
           curl -L "https://github.com/${{ github.repository }}/releases/download/${{ steps.get_release.outputs.result }}/wasm_exec.js" -o docs/wasm_exec.js
       
       - name: Move and rename HTML file
         run: |
           cp wasm.html docs/index.html
+      
+      - name: Verify files
+        run: |
+          ls -la docs/
+          file docs/EmojiFarm-wasm.wasm
+          file docs/wasm_exec.js
+          file docs/index.html
       
       - name: Setup Pages
         uses: actions/configure-pages@v5
