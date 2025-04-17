@@ -1,3 +1,5 @@
+//go:build js && wasm
+
 package main
 
 import (
@@ -5,7 +7,9 @@ import (
 	"fmt"
 	"hash/fnv"
 	"math/rand"
+	"runtime"
 	"sort"
+	"syscall/js"
 	"time"
 )
 
@@ -508,7 +512,7 @@ func (e *EmojiGrid) BuildFarm(logger *VerboseLogger) {
 	e.PrintCanvas(logger)
 
 	logger.Logln("\n7. Emoji canvas:")
-	e.PrintFinalEmojis()
+	e.PrintFinalEmojis(true)
 }
 
 // PrintCanvas prints the canvas (grid)
@@ -529,14 +533,19 @@ func (e *EmojiGrid) ConvertCanvasToStrings() {
 	}
 }
 
-// PrintFinalEmojis prints the final grid of emojis without spaces
-func (e *EmojiGrid) PrintFinalEmojis() {
+// PrintFinalEmojis returns the grid as a string and optionally prints it
+func (e *EmojiGrid) PrintFinalEmojis(printToConsole bool) string {
+	var result string
 	for _, row := range e.canvasStrings {
 		for _, emoji := range row {
-			fmt.Print(emoji)
+			result += emoji
 		}
-		fmt.Println()
+		result += "\n"
 	}
+	if printToConsole {
+		fmt.Print(result)
+	}
+	return result
 }
 
 // Convert string to a numeric seed using hash function
@@ -547,35 +556,75 @@ func hashString(s string) uint32 {
 }
 
 func main() {
-	// Define command-line flags
-	seedFlag := flag.String("seed", "", "(Optional) Seed for deterministic generation (string).")
-	var verbose bool
-	flag.BoolVar(&verbose, "v", false, "Enable verbose output")
-	flag.BoolVar(&verbose, "verbose", false, "Enable verbose output (same as -v)")
-	flag.Parse()
+	// Run command-line logic only in non-WASM environments
+	if runtime.GOOS != "js" || runtime.GOARCH != "wasm" {
+		// Define command-line flags
+		seedFlag := flag.String("seed", "", "(Optional) Seed for deterministic generation (string).")
+		var verbose bool
+		flag.BoolVar(&verbose, "v", false, "Enable verbose output")
+		flag.BoolVar(&verbose, "verbose", false, "Enable verbose output (same as -v)")
+		flag.Parse()
 
-	var seed int64
-	logger := NewVerboseLogger(verbose)
+		var seed int64
+		logger := NewVerboseLogger(verbose)
 
-	// Check for positional argument first
-	args := flag.Args()
-	if len(args) > 0 && *seedFlag == "" {
-		// Use positional argument if no -seed flag was provided
-		seed = int64(hashString(args[0]))
-		logger.Log("Using seed from positional argument '%s': %d\n", args[0], seed)
-	} else if *seedFlag != "" {
-		// Use -seed flag if provided
-		seed = int64(hashString(*seedFlag))
-		logger.Log("Using seed from -seed flag '%s': %d\n", *seedFlag, seed)
+		// Check for positional argument first
+		args := flag.Args()
+		if len(args) > 0 && *seedFlag == "" {
+			// Use positional argument if no -seed flag was provided
+			seed = int64(hashString(args[0]))
+			logger.Log("Using seed from positional argument '%s': %d\n", args[0], seed)
+		} else if *seedFlag != "" {
+			// Use -seed flag if provided
+			seed = int64(hashString(*seedFlag))
+			logger.Log("Using seed from -seed flag '%s': %d\n", *seedFlag, seed)
+		} else {
+			// No seed provided, use current time
+			seed = time.Now().UnixNano()
+			logger.Log("Using time-based seed: %d\n", seed)
+		}
+
+		// Create a new grid with the determined seed
+		grid := NewEmojiGrid(seed)
+
+		// Build the farm
+		grid.BuildFarm(logger)
 	} else {
-		// No seed provided, use current time
-		seed = time.Now().UnixNano()
-		logger.Log("Using time-based seed: %d\n", seed)
+		// --- WASM-specific logic ---
+		// Get document object
+		document := js.Global().Get("document")
+
+		// Get seed value from input field
+		seedInput := document.Call("getElementById", "seed")
+		seedStr := seedInput.Get("value").String()
+
+		// Get verbose setting from checkbox
+		verboseCheckbox := document.Call("getElementById", "verboseToggle")
+		verbose := verboseCheckbox.Get("checked").Bool()
+
+		var seed int64
+		logger := NewVerboseLogger(verbose)
+
+		if seedStr != "" {
+			seed = int64(hashString(seedStr))
+			logger.Log("Using seed from input '%s': %d\n", seedStr, seed)
+		} else {
+			seed = time.Now().UnixNano()
+			logger.Log("Using time-based seed: %d\n", seed)
+		}
+
+		// Create a new grid with the determined seed
+		grid := NewEmojiGrid(seed)
+
+		// Build the farm
+		grid.BuildFarm(logger)
+
+		// Get the grid as a string
+		gridString := grid.PrintFinalEmojis(false)
+
+		emojiGridDiv := document.Call("getElementById", "emojiGrid")
+
+		// Set the textContent of the div
+		emojiGridDiv.Set("textContent", gridString)
 	}
-
-	// Create a new grid with the determined seed
-	grid := NewEmojiGrid(seed)
-
-	// Build the farm
-	grid.BuildFarm(logger)
 }
