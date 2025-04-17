@@ -1,0 +1,506 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Emoji Farm</title>
+    <script src="wasm_exec.js"></script>
+    <style>
+        :root {
+            --grid-width: 95%; /* Adjust this value to control grid width */
+            --grid-max-width: 1000px; /* Adjust maximum width if needed */
+        }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            max-width: min(1200px, 95vw);
+            margin: 0 auto;
+            padding: clamp(10px, 2vw, 20px);
+            line-height: 1.6;
+            color: #333;
+        }
+        .container {
+            background-color: #f8f9fa;
+            border-radius: 8px;
+            padding: clamp(10px, 2vw, 20px);
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #2c3e50;
+            margin-top: 0;
+            text-align: center;
+            font-size: clamp(1.5rem, 5vw, 2.5rem);
+        }
+        .content-wrapper {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            width: 100%;
+            max-width: var(--grid-max-width);
+        }
+        .grid-container {
+            margin: clamp(10px, 2vh, 20px) auto;
+            text-align: center;
+            width: var(--grid-width);
+            max-width: var(--grid-max-width);
+            overflow-x: hidden;
+            padding: 0;
+            box-sizing: border-box;
+            order: 1;
+        }
+        .controls {
+            display: flex;
+            flex-wrap: wrap;
+            gap: clamp(5px, 1vw, 10px);
+            justify-content: center;
+            margin: clamp(10px, 2vh, 20px) 0;
+            order: 2;
+        }
+        @media (min-width: 768px) {
+            .content-wrapper {
+                flex-direction: row;
+                align-items: flex-start;
+                gap: 20px;
+            }
+            .controls {
+                flex-direction: column;
+                align-items: flex-start;
+                max-width: 300px;
+                margin: 0;
+                order: 1;
+            }
+            .grid-container {
+                flex: 1;
+                margin: 0;
+                order: 2;
+            }
+            .form-group {
+                width: 100%;
+            }
+            button {
+                width: 100%;
+            }
+        }
+        #emojiGrid {
+            font-size: clamp(1vw, 6vw, 6vh);
+            line-height: 1;
+            white-space: pre;
+            font-family: monospace;
+            background: white;
+            padding: clamp(5px, 1%, 15px);
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            margin: 0 auto;
+            width: fit-content;
+            min-width: 0;
+            max-width: 100%;
+            box-sizing: border-box;
+            display: inline-block;
+            text-align: left;
+        }
+        .form-group {
+            margin-bottom: clamp(8px, 2vh, 16px);
+            flex: 1 1;
+            max-width: min(300px, 100%);
+            position: relative;
+        }
+        label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 500;
+        }
+        .checkbox-label {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 0;
+            cursor: pointer;
+        }
+        .checkbox-label input[type="checkbox"] {
+            margin: 0;
+            width: auto;
+        }
+        input[type="text"] {
+            width: 100%;
+            padding: clamp(6px, 1vh, 12px);
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: clamp(14px, 2vw, 16px);
+            box-sizing: border-box;
+            padding-right: 30px;
+        }
+        .clear-seed-btn {
+            position: absolute;
+            right: 10px;
+            top: 70%;
+            transform: translateY(-50%);
+            cursor: pointer;
+            font-size: 20px;
+            color: #aaa;
+            display: none;
+        }
+        .clear-seed-btn:hover {
+            color: #666;
+        }
+        input[type="checkbox"] {
+            margin-left: 5px;
+            vertical-align: middle;
+        }
+        button {
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            padding: clamp(8px, 1.5vh, 20px) clamp(15px, 2vw, 30px);
+            text-align: center;
+            text-decoration: none;
+            display: inline-block;
+            font-size: clamp(14px, 2vw, 16px);
+            cursor: pointer;
+            border-radius: 4px;
+            transition: background-color 0.3s;
+            flex: 1;
+            min-width: min(120px, 100%);
+        }
+        button:hover {
+            background-color: #45a049;
+        }
+        .log-container {
+            margin-top: clamp(10px, 2vh, 20px);
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            overflow: hidden;
+            max-width: min(600px, 100%);
+            margin-left: auto;
+            margin-right: auto;
+        }
+        .log-header {
+            background-color: #f5f5f5;
+            padding: 8px 12px;
+            border-bottom: 1px solid #ddd;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 8px;
+            user-select: none;
+        }
+        .log-header span {
+            flex: 1;
+        }
+        .clear-button {
+            background-color: transparent;
+            color: #666;
+            border: 1px solid #ddd;
+            padding: 4px 8px;
+            font-size: 12px;
+            margin: 0;
+            min-width: auto;
+            flex: 0 0 auto;
+            width: fit-content;
+            white-space: nowrap;
+        }
+        .clear-button:hover {
+            background-color: #eee;
+            color: #333;
+        }
+        .log-header:hover {
+            background-color: #eee;
+        }
+        .log-header::before {
+            content: '▼';
+            font-size: 12px;
+            transform: rotate(-90deg);
+        }
+        .log-header.transition-enabled::before {
+            transition: transform 0.3s;
+        }
+        .log-header.collapsed::before {
+            transform: rotate(-90deg);
+        }
+        .log-header:not(.collapsed)::before {
+            transform: rotate(0deg);
+        }
+        #output {
+            background-color: #fff;
+            padding: 10px;
+            white-space: pre-wrap;
+            min-height: 200px;
+            max-height: 400px;
+            overflow-y: auto;
+            font-family: 'Menlo', 'Monaco', 'Courier New', monospace;
+            font-size: 16px;
+            line-height: 1.2;
+        }
+        .status {
+            color: #666;
+            font-style: italic;
+        }
+        .output-section {
+            margin-bottom: 10px;
+            border-bottom: 1px solid #ddd;
+            padding-bottom: 10px;
+        }
+        .output-section:last-child {
+            border-bottom: none;
+            margin-bottom: 0;
+            padding-bottom: 0;
+        }
+        .output-section p {
+            margin: 2px 0;
+            padding: 0;
+        }
+        #output::-webkit-scrollbar {
+            width: 10px;
+        }
+        #output::-webkit-scrollbar-track {
+            background: #f1f1f1;
+            border-radius: 5px;
+        }
+        #output::-webkit-scrollbar-thumb {
+            background: #888;
+            border-radius: 5px;
+        }
+        #output::-webkit-scrollbar-thumb:hover {
+            background: #555;
+        }
+        /* Custom scrollbar styling */
+        #output::-webkit-scrollbar {
+            width: 10px;
+        }
+        #output::-webkit-scrollbar-track {
+            background: #f1f1f1;
+            border-radius: 5px;
+        }
+        #output::-webkit-scrollbar-thumb {
+            background: #888;
+            border-radius: 5px;
+        }
+        #output::-webkit-scrollbar-thumb:hover {
+            background: #555;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Emoji Farm</h1>
+        
+        <div class="content-wrapper">
+            <div class="controls">
+                <div class="form-group">
+                    <label for="seed">Seed (optional):</label>
+                    <input type="text" id="seed" placeholder="Enter a seed value">
+                    <span class="clear-seed-btn" id="clearSeedBtn">&times;</span>
+                </div>
+                <div class="form-group">
+                    <label for="verboseToggle" class="checkbox-label">
+                        <input type="checkbox" id="verboseToggle" checked>
+                        Verbose Logging
+                    </label>
+                </div>
+                
+                <button id="runButton">Generate New Grid</button>
+                <button id="testButton" style="display: none;">Test (50 runs)</button>
+            </div>
+            
+            <div class="grid-container">
+                <div id="emojiGrid"></div>
+            </div>
+        </div>
+        
+        <div class="log-container">
+            <div class="log-header">
+                <span>Log Output</span>
+                <button id="clearButton" class="clear-button">Clear Log</button>
+            </div>
+            <div id="output">
+                <span class="status">Output will appear here...</span>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const go = new Go();
+        const WASM_URL = './EmojiFarm-wasm.wasm';
+        let wasm;
+        let originalConsoleLog = console.log;
+
+        // Function to get URL parameters
+        function getUrlParameter(name) {
+            const urlParams = new URLSearchParams(window.location.search);
+            return urlParams.get(name);
+        }
+
+        // Function to check if debug mode is enabled
+        function isDebugMode() {
+            return getUrlParameter('debug') === 'true';
+        }
+
+        // Function to set the seed input value from URL parameter
+        function initializeSeedFromUrl() {
+            const seedInput = document.getElementById('seed');
+            const seedParam = getUrlParameter('seed');
+            if (seedParam) {
+                seedInput.value = seedParam;
+            }
+        }
+
+        // Function to initialize debug mode
+        function initializeDebugMode() {
+            const testButton = document.getElementById('testButton');
+            if (isDebugMode()) {
+                testButton.style.display = 'block';
+            }
+        }
+
+        function captureConsoleOutput() {
+            const outputDiv = document.getElementById('output');
+            const outputSection = document.createElement('div');
+            outputSection.className = 'output-section';
+            
+            console.log = function() {
+                // Create a new paragraph for each log
+                const p = document.createElement('p');
+                const message = Array.from(arguments).join(' ');
+                p.textContent = message;
+                outputSection.appendChild(p);
+            };
+            
+            // Remove the initial status message if it exists
+            const statusElement = outputDiv.querySelector('.status');
+            if (statusElement) {
+                outputDiv.removeChild(statusElement);
+            }
+            
+            // Append the new section at the bottom
+            outputDiv.appendChild(outputSection);
+        }
+
+        // Set up MutationObserver to auto-scroll to bottom
+        const outputDiv = document.getElementById('output');
+        const observer = new MutationObserver(() => {
+            outputDiv.scrollTop = outputDiv.scrollHeight;
+        });
+        observer.observe(outputDiv, { childList: true, subtree: true });
+
+        function loadWasm() {
+            captureConsoleOutput();
+            
+            // Go function now reads seed and verbose directly from DOM
+            
+            if ('instantiateStreaming' in WebAssembly) {
+                WebAssembly.instantiateStreaming(fetch(WASM_URL), go.importObject).then(function (obj) {
+                    wasm = obj.instance;
+                    go.run(wasm);
+                    // Call the exported function. No need to pass args anymore.
+                    // wasm.exports.GenerateFarm();
+                })
+            } else {
+                fetch(WASM_URL).then(resp =>
+                    resp.arrayBuffer()
+                ).then(bytes =>
+                    WebAssembly.instantiate(bytes, go.importObject).then(function (obj) {
+                        wasm = obj.instance;
+                        go.run(wasm);
+                        // Call the exported function. No need to pass args anymore.
+                        // wasm.exports.GenerateFarm();
+                    })
+                )
+            }
+        }
+
+        // Initialize everything when the page loads
+        document.addEventListener('DOMContentLoaded', function() {
+            // Initialize seed from URL
+            initializeSeedFromUrl();
+            setupSeedClearButton();
+            initializeDebugMode();
+            
+            // Initialize log visibility
+            const output = document.getElementById('output');
+            const logHeader = document.querySelector('.log-header');
+            output.style.display = 'none';
+            logHeader.classList.add('collapsed');
+            
+            // Load WASM
+            loadWasm();
+            
+            // Add transition after a short delay to prevent initial animation
+            setTimeout(() => {
+                logHeader.classList.add('transition-enabled');
+            }, 50);
+        });
+
+        // Function to setup clear button for seed input
+        function setupSeedClearButton() {
+            const seedInput = document.getElementById('seed');
+            const clearBtn = document.getElementById('clearSeedBtn');
+
+            // Show/hide button based on input content
+            seedInput.addEventListener('input', function() {
+                clearBtn.style.display = this.value ? 'inline' : 'none';
+            });
+
+            // Clear input on button click
+            clearBtn.addEventListener('click', function() {
+                seedInput.value = '';
+                clearBtn.style.display = 'none';
+                seedInput.focus();
+                seedInput.dispatchEvent(new Event('input', { bubbles: true }));
+                seedInput.dispatchEvent(new Event('change', { bubbles: true }));
+            });
+
+            // Initial check in case input is pre-filled (e.g., from URL)
+            clearBtn.style.display = seedInput.value ? 'inline' : 'none';
+        }
+
+        // Add event listener to update URL when seed changes
+        document.getElementById('seed').addEventListener('change', function() {
+            const seed = this.value.trim();
+            const url = new URL(window.location);
+            if (seed) {
+                url.searchParams.set('seed', seed);
+            } else {
+                url.searchParams.delete('seed');
+            }
+            window.history.pushState({}, '', url);
+        });
+
+        // Toggle output visibility
+        const logHeader = document.querySelector('.log-header');
+        const output = document.getElementById('output');
+        
+        logHeader.addEventListener('click', function() {
+            const isCollapsed = logHeader.classList.toggle('collapsed');
+            output.style.display = isCollapsed ? 'none' : 'block';
+        });
+
+        // Clear the output
+        document.getElementById('clearButton').addEventListener('click', function(event) {
+            event.stopPropagation(); // Prevent click from bubbling to header
+            document.getElementById('output').innerHTML = '<span class="status">Output will appear here...</span>';
+        });
+
+        // Add click handler for the test button
+        document.getElementById('testButton').addEventListener('click', async function() {
+            const startTime = performance.now();
+            console.log('Starting test run (50 iterations)...');
+            
+            for (let i = 0; i < 50; i++) {
+                console.log(`\n--- Test Run ${i + 1}/50 ---`);
+                await new Promise(resolve => {
+                    loadWasm();
+                    // Wait for the current run to complete before starting the next one
+                    setTimeout(resolve, 10); // Adjust this delay if needed
+                });
+            }
+            
+            const endTime = performance.now();
+            console.log(`\nTest completed in ${((endTime - startTime) / 1000).toFixed(2)} seconds`);
+        });
+
+        // Add click handler for the run button
+        document.getElementById('runButton').addEventListener('click', function() {
+            loadWasm();
+        });
+    </script>
+</body>
+</html>
