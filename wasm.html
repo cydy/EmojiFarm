@@ -298,7 +298,7 @@
                 </div>
                 
                 <button id="runButton">Generate New Grid</button>
-                <button id="testButton">Test (50 runs)</button>
+                <button id="testButton" style="display: none;">Test (50 runs)</button>
             </div>
             
             <div class="grid-container">
@@ -329,12 +329,25 @@
             return urlParams.get(name);
         }
 
+        // Function to check if debug mode is enabled
+        function isDebugMode() {
+            return getUrlParameter('debug') === 'true';
+        }
+
         // Function to set the seed input value from URL parameter
         function initializeSeedFromUrl() {
             const seedInput = document.getElementById('seed');
             const seedParam = getUrlParameter('seed');
             if (seedParam) {
                 seedInput.value = seedParam;
+            }
+        }
+
+        // Function to initialize debug mode
+        function initializeDebugMode() {
+            const testButton = document.getElementById('testButton');
+            if (isDebugMode()) {
+                testButton.style.display = 'block';
             }
         }
 
@@ -394,11 +407,26 @@
             }
         }
 
-        // Initialize seed from URL parameter when the page loads
+        // Initialize everything when the page loads
         document.addEventListener('DOMContentLoaded', function() {
+            // Initialize seed from URL
             initializeSeedFromUrl();
             setupSeedClearButton();
+            initializeDebugMode();
+            
+            // Initialize log visibility
+            const output = document.getElementById('output');
+            const logHeader = document.querySelector('.log-header');
+            output.style.display = 'none';
+            logHeader.classList.add('collapsed');
+            
+            // Load WASM
             loadWasm();
+            
+            // Add transition after a short delay to prevent initial animation
+            setTimeout(() => {
+                logHeader.classList.add('transition-enabled');
+            }, 50);
         });
 
         // Function to setup clear button for seed input
@@ -443,16 +471,6 @@
         logHeader.addEventListener('click', function() {
             const isCollapsed = logHeader.classList.toggle('collapsed');
             output.style.display = isCollapsed ? 'none' : 'block';
-        });
-
-        // Initialize output visibility
-        document.addEventListener('DOMContentLoaded', function() {
-            output.style.display = 'none';
-            logHeader.classList.add('collapsed');
-            // Add transition after a short delay to prevent initial animation
-            setTimeout(() => {
-                logHeader.classList.add('transition-enabled');
-            }, 50);
         });
 
         // Clear the output
